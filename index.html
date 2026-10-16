@@ -6,175 +6,222 @@
 <title>40timer</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;padding:0;background:#f3f3f3;font-family:system-ui, sans-serif;}
-h1{text-align:center;margin:12px 0;}
-.wrap{max-width:1200px;margin:0 auto;padding:8px;}
-.group{background:#fff;border-radius:12px;padding:14px;margin-bottom:14px;}
-.group-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:18px;font-weight:bold}
-.grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(110px,1fr));gap:8px;}
-.timer{
+html,body{margin:0;padding:0;background:#f5f5f5;font-family:system-ui, sans-serif;}
+h1{margin:16px 16px 8px;}
+.wrapper{padding:0 16px 30px;max-width:1100px;margin:0 auto;}
+.control-bar{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+.control-bar button{padding:8px 14px;border:none;border-radius:8px;background:#333;color:white;font-size:15px;cursor:pointer;}
+.group{background:#ffffff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 4px #00000015;}
+.group-title{display:flex;justify-content:space-between;font-size:19px;font-weight:bold;margin-bottom:12px;align-items:center;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(120px,1fr));gap:10px;}
+.timer-btn{
   border:0;
-  border-radius:8px;
-  padding:10px 4px;
-  min-height:70px;
-  font-size:15px;
+  border-radius:10px;
+  min-height:75px;
+  font-size:16px;
   color:#fff;
-  cursor:pointer;
   white-space:pre-line;
   transition:0.2s;
+  cursor:pointer;
 }
-.idle{background:#777;}
-.run{background:#28a745;}
-.pause{background:#f0ad4e;color:#222;}
+.idle{background:#666666;}
+.running{background:#28a745;}
+.paused{background:#f0ad4e;color:#222;}
 .over50{background:#dc3545 !important;}
-.ctrl-row{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}
-.ctrl-btn{padding:8px 12px;border:0;border-radius:6px;background:#444;color:#fff;cursor:pointer;}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;padding:16px;}
+.help-circle{
+  position:fixed;
+  bottom:18px;
+  right:18px;
+  width:46px;height:46px;
+  border-radius:50%;
+  border:none;
+  background:#222;color:#fff;font-size:22px;
+}
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.55);
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+}
 .modal.show{display:flex;}
-.modal-inner{background:#fff;padding:20px;border-radius:10px;max-width:480px}
+.modal-content{background:#fff;padding:22px;border-radius:12px;max-width:460px;}
+.modal-content button{margin-top:10px;padding:7px 14px;cursor:pointer;}
 </style>
 </head>
 <body>
-<div class="wrap">
 <h1>40timer</h1>
-<div class="ctrl-row">
-<button class="ctrl-btn" id="pauseAll">全部暂停</button>
-<button class="ctrl-btn" id="resetAll">全部清零</button>
-<button class="ctrl-btn" id="helpBtn">说明</button>
+<div class="wrapper">
+  <div class="control-bar">
+    <button id="pauseAll">全部暂停</button>
+    <button id="resetAll">全部清零</button>
+    <button id="openHelp">使用说明</button>
+  </div>
+
+  <div class="group">
+    <div class="group-title">
+      A组 <span id="totalA">累计时间：00:00</span>
+    </div>
+    <div class="grid" id="gridA"></div>
+  </div>
+
+  <div class="group">
+    <div class="group-title">
+      B组 <span id="totalB">累计时间：00:00</span>
+    </div>
+    <div class="grid" id="gridB"></div>
+  </div>
 </div>
 
-<div class="group">
-<div class="group-head">A组 <span id="sumA">合计：00:00</span></div>
-<div class="grid" id="gridA"></div>
-</div>
-
-<div class="group">
-<div class="group-head">B组 <span id="sumB">合计：00:00</span></div>
-<div class="grid" id="gridB"></div>
-</div>
-</div>
-
+<button class="help-circle" id="helpBtn">?</button>
 <div class="modal" id="helpModal">
-<div class="modal-inner">
-<h2>使用说明</h2>
-<p>点击按钮开始/暂停计时<br>长按按钮清零单个计时器<br>时间格式：分:秒，累计≥50分钟按钮变红</p>
-<button class="ctrl-btn" id="closeHelp">关闭</button>
-</div>
+  <div class="modal-content">
+    <h2>使用说明</h2>
+    <p>单击按钮：开始 / 暂停计时<br>长按按钮：单独清零这个计时器<br>计时格式：分:秒，单个计时器超过50分钟，按钮变红</p>
+    <button id="closeHelp">关闭</button>
+  </div>
 </div>
 
 <script>
-const KEY = 'timer40data';
-const COUNT = 20;
-let data = loadData();
+const STORAGE_KEY = "timer40save";
+const PER_GROUP = 20;
 
-// 格式化：分:秒
-function format(sec){
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return String(m).padStart(2,'0') + ":" + String(s).padStart(2,'0');
-}
-
-function makeBlank(){
-  return Array(COUNT).fill(null).map(()=>({sec:0,run:false,timer:null}));
-}
-function loadData(){
-  const raw = localStorage.getItem(KEY);
-  if(!raw) return {A:makeBlank(), B:makeBlank()};
-  try{return JSON.parse(raw);}catch(e){return {A:makeBlank(), B:makeBlank()};}
-}
-function saveData(){
-  localStorage.setItem(KEY, JSON.stringify(data));
+// 分:秒格式化函数
+function formatTime(totalSec) {
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return String(m).padStart(2, '0') + ":" + String(s).padStart(2, '0');
 }
 
-// 渲染单个组
-function renderGroup(name, domId, sumDomId){
-  const root = document.getElementById(domId);
-  const arr = data[name];
-  root.innerHTML = '';
-  let total = 0;
-  arr.forEach((item, idx)=>{
-    total += item.sec;
-    const btn = document.createElement('button');
-    btn.className = 'timer';
-    const label = `${name}${idx+1}`;
-    btn.dataset.g = name;
+function createEmptyGroup() {
+  return Array(PER_GROUP).fill(null).map(() => ({
+    seconds: 0,
+    running: false,
+    timerId: null
+  }));
+}
+
+// 读取本地存储
+function loadState() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) return {A: createEmptyGroup(), B: createEmptyGroup()};
+  try {
+    return JSON.parse(saved);
+  } catch {
+    return {A: createEmptyGroup(), B: createEmptyGroup()};
+  }
+}
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadState();
+
+// 渲染一组
+function renderGroup(groupKey, domId, totalDomId) {
+  const dom = document.getElementById(domId);
+  dom.innerHTML = "";
+  let sumSec = 0;
+  state[groupKey].forEach((item, idx) => {
+    sumSec += item.seconds;
+    const btn = document.createElement("button");
+    btn.className = "timer-btn";
+    const name = groupKey + (idx+1);
+    btn.dataset.g = groupKey;
     btn.dataset.i = idx;
-    if(item.run) btn.classList.add('run');
-    else if(item.sec>0) btn.classList.add('pause');
-    else btn.classList.add('idle');
-    // 超过50分钟变红 50*60=3000秒
-    if(item.sec >= 3000) btn.classList.add('over50');
 
-    btn.textContent = label + "\n" + format(item.sec);
+    if(item.running) btn.classList.add("running");
+    else if(item.seconds > 0) btn.classList.add("paused");
+    else btn.classList.add("idle");
 
-    let longPressTimer = null;
-    const g = name, i = idx;
+    // >=50分钟变红
+    if(item.seconds >= 50 * 60) {
+      btn.classList.add("over50");
+    }
+    btn.textContent = `${name}\n${formatTime(item.seconds)}`;
+
+    let longTimer = null;
     // 单击切换计时
-    btn.onclick = ()=>{
-      const it = data[g][i];
-      if(it.run){
-        clearInterval(it.timer);
-        it.run = false;
+    btn.onclick = () => {
+      const it = state[groupKey][idx];
+      if(it.running){
+        clearInterval(it.timerId);
+        it.running = false;
       }else{
-        it.run = true;
-        it.timer = setInterval(()=>{
-          it.sec += 1;
-          saveData();
+        it.running = true;
+        it.timerId = setInterval(()=>{
+          it.seconds +=1;
+          saveState();
           renderAll();
-        },1000);
+        },1000)
       }
-      saveData();
+      saveState();
       renderAll();
     }
-    // 长按清零
-    btn.onmousedown = btn.ontouchstart = ()=>{
-      longPressTimer = setTimeout(()=>{
-        const it = data[g][i];
-        clearInterval(it.timer);
-        it.sec = 0;
-        it.run = false;
-        saveData();
+    //长按清零
+    btn.addEventListener('touchstart',()=>{
+      longTimer = setTimeout(()=>{
+        const it = state[groupKey][idx];
+        clearInterval(it.timerId);
+        it.seconds = 0;
+        it.running = false;
+        saveState();
         renderAll();
-      }, 800);
+      },800)
+    })
+    btn.addEventListener('touchend',()=>clearTimeout(longTimer));
+    btn.onmousedown = ()=>{
+      longTimer = setTimeout(()=>{
+        const it = state[groupKey][idx];
+        clearInterval(it.timerId);
+        it.seconds = 0;
+        it.running = false;
+        saveState();
+        renderAll();
+      },800)
     }
-    btn.onmouseup = btn.ontouchend = ()=>{
-      clearTimeout(longPressTimer);
-    }
-    root.appendChild(btn);
+    btn.onmouseup = ()=>clearTimeout(longTimer);
+    dom.appendChild(btn);
   })
-  document.getElementById(sumDomId).textContent = "合计：" + format(total);
+  document.getElementById(totalDomId).textContent = "累计时间：" + formatTime(sumSec);
 }
 
-function renderAll(){
-  renderGroup('A','gridA','sumA');
-  renderGroup('B','gridB','sumB');
+function renderAll() {
+  renderGroup('A','gridA','totalA');
+  renderGroup('B','gridB','totalB');
 }
 
-// 全部暂停
+//全部暂停
 document.getElementById('pauseAll').onclick = ()=>{
   ['A','B'].forEach(g=>{
-    data[g].forEach(it=>{
-      if(it.run){
-        clearInterval(it.timer);
-        it.run = false;
+    state[g].forEach(item=>{
+      if(item.running){
+        clearInterval(item.timerId);
+        item.running = false;
       }
     })
   })
-  saveData();renderAll();
+  saveState();
+  renderAll();
 }
-// 全部清零
+//全部清零
 document.getElementById('resetAll').onclick = ()=>{
   ['A','B'].forEach(g=>{
-    data[g].forEach(it=>{
-      clearInterval(it.timer);
-      it.sec = 0;
-      it.run = false;
+    state[g].forEach(item=>{
+      clearInterval(item.timerId);
+      item.seconds = 0;
+      item.running = false;
     })
   })
-  saveData();renderAll();
+  saveState();
+  renderAll();
 }
-
-// 弹窗
+//弹窗
+document.getElementById('openHelp').onclick = ()=>{
+  document.getElementById('helpModal').classList.add('show');
+}
 document.getElementById('helpBtn').onclick = ()=>{
   document.getElementById('helpModal').classList.add('show');
 }
