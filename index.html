@@ -1,353 +1,113 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f5f7f2">
-<meta name="description" content="A、B 两组共 40 个独立计时按钮，每组 4 列 5 行。点击开始、暂停或继续，自动保存到本机。">
-<title>双组计时 · 40 点</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>40timer</title>
 <style>
-:root { color-scheme:light; --ink:#172c25; --muted:#65736a; --green:#1b7456; }
-* { box-sizing:border-box; }
-body { margin:0; background:#eaf0e6; color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif; -webkit-tap-highlight-color:transparent; overflow:hidden; }
-button { font:inherit; cursor:pointer; touch-action:manipulation; }
-button:focus-visible { outline:3px solid #167a9b; outline-offset:2px; }
-button:disabled { cursor:default; }
-.surface { width:100vw; height:100vh; overflow:auto; position:fixed; top:0; left:0; background:#f5f7f2; }
-.surface.rotated { left:50%; top:50%; transform:translate(-50%,-50%) rotate(90deg); }
-.app { max-width:940px; margin:0 auto; padding:20px 20px max(18px,env(safe-area-inset-bottom)); }
-.eyebrow { display:flex; gap:7px; align-items:center; font-size:11px; letter-spacing:.6px; color:#617269; margin:0 0 9px; }
-.brand-dot { height:7px; width:7px; background:var(--green); border-radius:50%; }
-.title-line { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-h1 { margin:0; font-size:28px; font-weight:720; letter-spacing:-1px; }
-.top-actions { display:flex; align-items:center; gap:9px; }
-.grid-label { font-size:11px; color:var(--muted); white-space:nowrap; }
-.rotate-button { border:1px solid #cedbca; background:#e6eee2; color:#345c43; border-radius:8px; padding:8px 10px; font-size:12px; white-space:nowrap; }
-.subtitle { margin:8px 0 16px; font-size:12px; color:var(--muted); }
-.summary { border-radius:10px; padding:10px 13px; background:#e8eee5; display:flex; justify-content:space-between; align-items:center; font-size:12px; }
-.summary-left { display:flex; align-items:center; gap:8px; }
-.live-dot { width:7px; height:7px; background:#9aa69a; border-radius:50%; }
-.live-dot.on { background:var(--green); box-shadow:0 0 0 3px rgba(27,116,86,.1); }
-#running { font-weight:700; font-variant-numeric:tabular-nums; }
-.paused-count { color:#647267; font-size:11px; }
-.groups { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; margin-top:15px; }
-.group { min-width:0; }
-.group-heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
-.group-heading h2 { margin:0; font-size:15px; font-weight:650; display:flex; gap:6px; align-items:center; }
-.group-heading>span { font-size:10px; color:#778570; }
-.group-badge { display:inline-flex; align-items:center; justify-content:center; width:21px; height:21px; border-radius:6px; background:#dde7d7; font-size:12px; }
-.timer-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
-.tile { min-width:0; border:1px solid #dfe6d9; border-radius:10px; background:#fff; color:#203b2e; padding:9px 8px 8px; text-align:left; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; transition:background .15s,transform .1s; }
-.tile:active { transform:scale(.97); }
-.tile-top { display:flex; align-items:center; justify-content:space-between; gap:2px; }
-.number { font-size:23px; font-weight:650; line-height:1.1; }
-.status-dot { flex-shrink:0; width:4px; height:4px; border-radius:50%; background:#cbd4c8; }
-.time { display:block; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:18px; font-weight:600; margin-top:10px; line-height:1.15; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
-.time.long { font-size:14px; letter-spacing:-.4px; }
-.tile-label { display:block; font-size:10px; color:#7c887d; margin-top:6px; line-height:1.25; }
-.tile.running { background:var(--green); color:#fff; border-color:var(--green); }
-.running .status-dot { background:#b5e7c2; }
-.running .tile-label { color:#d1eadc; }
-.tile.paused { background:#fff4df; border-color:#e9cf95; color:#79571c; }
-.paused .status-dot { background:#b47e20; }
-.paused .tile-label { color:#916c29; }
-.grid-note { display:flex; justify-content:space-between; gap:8px; font-size:10px; color:#7a867c; margin:10px 0 15px; }
-.actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.action { border-radius:9px; height:42px; font-weight:600; font-size:13px; }
-.pause-all { background:#e2eade; color:#30543f; border:1px solid #e2eade; }
-.reset-all { background:transparent; border:1px solid #dce3d8; color:#52644f; }
-.action:disabled { color:#a4ada1; background:#edf0e9; }
-.storage-note { font-size:10px; color:#7d887c; text-align:center; margin:13px 0 0; }
-.storage-note.error { color:#ac4938; }
-.footer { display:flex; justify-content:center; gap:16px; margin-top:10px; }
-.help-button { background:none; border:0; color:#6d7e70; font-size:10px; text-decoration:underline; text-underline-offset:3px; padding:5px; }
-.modal { position:fixed; inset:0; z-index:10; background:rgba(18,39,29,.3); padding:15px; display:flex; justify-content:center; align-items:center; backdrop-filter:blur(3px); }
-.modal[hidden] { display:none; }
-.dialog { max-width:380px; max-height:95%; overflow:auto; width:100%; padding:22px; border-radius:16px; background:#fff; box-shadow:0 15px 60px #172c2530; }
-.dialog h2 { margin:0 0 10px; font-size:20px; }
-.dialog p { margin:0; color:var(--muted); font-size:13px; line-height:1.8; white-space:pre-line; }
-.dialog-actions { display:flex; gap:10px; margin-top:18px; }
-.dialog-actions button { border:0; border-radius:8px; height:40px; flex:1; font-size:13px; background:#edf0e9; color:#40533d; }
-.dialog-actions .confirm { background:#b34d36; color:#fff; }
-.dialog-actions .confirm.help { background:var(--green); }
-.narrow .app { padding:18px 11px; }
-.narrow h1 { font-size:25px; }
-.narrow .groups { gap:12px; }
-.narrow .timer-grid { gap:4px; }
-.narrow .tile { padding:9px 4px 8px; border-radius:7px; }
-.narrow .number { font-size:18px; }
-.narrow .time { font-size:12px; letter-spacing:-.4px; margin-top:13px; }
-.narrow .time.long { font-size:9px; }
-.narrow .tile-label { font-size:9px; }
-.narrow .group-heading h2 { font-size:13px; }
-.narrow .grid-note { font-size:9px; }
-.narrow .grid-label { font-size:10px; }
-.narrow .top-actions { gap:7px; }
-.narrow .rotate-button { font-size:11px; padding:8px; }
-.compact .app { padding:8px 18px; }
-.compact .eyebrow,.compact .subtitle,.compact .storage-note,.compact .tile-label { display:none; }
-.compact .storage-note.error { display:block; }
-.compact h1 { font-size:20px; }
-.compact .rotate-button { padding:5px 9px; }
-.compact .summary { padding:5px 10px; margin-top:6px; font-size:11px; }
-.compact .groups { margin-top:6px; gap:18px; }
-.compact .group-heading { margin-bottom:5px; }
-.compact .group-heading h2 { font-size:12px; }
-.compact .group-badge { width:16px; height:16px; font-size:10px; }
-.compact .timer-grid { gap:4px; }
-.compact .tile { padding:4px 7px; border-radius:6px; }
-.compact .number { font-size:16px; }
-.compact .time { font-size:13px; line-height:1.1; margin-top:2px; }
-.compact .time.long { font-size:11px; }
-.compact .grid-note { margin:5px 0 6px; font-size:9px; }
-.compact .action { height:30px; font-size:11px; border-radius:6px; }
-.compact .footer { margin-top:3px; }
-.compact .help-button { padding:2px 5px; font-size:9px; }
-@media(prefers-reduced-motion:reduce) { * { transition:none!important; } }
+*{box-sizing:border-box}
+body{font-family:system-ui, sans-serif;margin:16px;background:#f5f5f5}
+h1{margin:0 0 12px;font-size:22px}
+.container{max-width:1100px;margin:0 auto}
+.group{background:#fff;padding:16px;border-radius:10px;margin-bottom:16px;box-shadow:0 1px 3px #0002}
+.group-title{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:18px;font-weight:bold}
+.timer-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.timer-btn{padding:12px 8px;border:none;border-radius:8px;font-size:16px;cursor:pointer;color:#fff;min-height:72px;transition:.2s;background:#666}
+.timer-btn.running{background:#28a745}
+.timer-btn.paused{background:#f0ad4e;color:#222}
+.timer-btn.over50{background:#dc3545!important;}
+.help-btn{position:fixed;bottom:16px;right:16px;width:44px;height:44px;border-radius:50%;border:none;background:#333;color:#fff;font-size:20px;cursor:pointer}
+.modal{display:none;position:fixed;inset:0;background:#0007;align-items:center;justify-content:center;padding:16px}
+.modal.show{display:flex}
+.modal-box{background:#fff;padding:20px;border-radius:10px;max-width:500px}
+.modal-box h2{margin-top:0}
+.modal-close{margin-top:12px;padding:8px 16px;cursor:pointer}
 </style>
 </head>
 <body>
-<div id="surface" class="surface">
-<main class="app">
-  <header>
-    <p class="eyebrow"><span class="brand-dot" aria-hidden="true"></span>每一点，都有自己的时间</p>
-    <div class="title-line"><h1>双组计时</h1><div class="top-actions"><span class="grid-label">40 点 · A / B</span><button id="rotate" class="rotate-button" aria-pressed="false">↻ 旋转屏幕</button></div></div>
-    <p class="subtitle">点一下开始，再点暂停，再点继续。</p>
-  </header>
-  <section class="summary" aria-label="计时状态">
-    <span class="summary-left"><span id="liveDot" class="live-dot" aria-hidden="true"></span><span><b id="running">0</b> 个计时中</span></span>
-    <span class="paused-count"><span id="paused">0</span> 个已暂停</span>
-  </section>
-  <div class="groups">
-    <section class="group" aria-label="A组20个计时按钮"><div class="group-heading"><h2><span class="group-badge">A</span> A 组</h2><span>累计秒数</span></div><div id="gridA" class="timer-grid"></div></section>
-    <section class="group" aria-label="B组20个计时按钮"><div class="group-heading"><h2><span class="group-badge">B</span> B 组</h2><span>累计秒数</span></div><div id="gridB" class="timer-grid"></div></section>
-  </div>
-  <div class="grid-note"><span>每组左下角为 1，向右、向上排列</span><span>长按单个清零</span></div>
-  <div class="actions">
-    <button id="pauseAll" class="action pause-all" disabled>全部暂停</button>
-    <button id="resetAll" class="action reset-all" disabled>全部清零</button>
-  </div>
-  <p id="storageNote" class="storage-note" role="status">自动保存到本机 · 离开后继续计时</p>
-  <div class="footer"><button id="help" class="help-button">使用说明</button><button id="shareHelp" class="help-button">如何发到微信</button></div>
-</main>
-<div id="modal" class="modal" hidden>
-  <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" aria-describedby="dialogText">
-    <h2 id="dialogTitle"></h2><p id="dialogText"></p>
-    <div class="dialog-actions"><button id="cancel">取消</button><button id="confirm" class="confirm">清零</button></div>
-  </section>
+<div class="container">
+<h1>40timer</h1>
+<div class="group">
+<div class="group-title">A组 <span>累计时间</span></div>
+<div class="timer-grid" id="groupA"></div>
+</div>
+<div class="group">
+<div class="group-title">B组 <span>累计时间</span></div>
+<div class="timer-grid" id="groupB"></div>
+</div>
+</div>
+<button class="help-btn" id="helpBtn">?</button>
+<div class="modal" id="helpModal">
+<div class="modal-box">
+<h2>使用说明</h2>
+<p>点击按钮开始计时，再次点击暂停。<br>时间格式：分:秒，超过50分钟按钮会变成红色。</p>
+<button class="modal-close" id="closeModal">关闭</button>
 </div>
 </div>
 <script>
-(function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory();
-  else root.TimerCore = factory();
-}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
-  'use strict';
-  var NUMBERS = [17, 18, 19, 20, 13, 14, 15, 16, 9, 10, 11, 12, 5, 6, 7, 8, 1, 2, 3, 4];
-  var ORDER = ['A', 'B'].reduce(function (all, group) {
-    return all.concat(NUMBERS.map(function (number) { return group + '-' + number; }));
-  }, []);
-  function blank(id) { return { id: id, status: 'idle', elapsedMs: 0, startedAt: null }; }
-  function create() { return ORDER.map(blank); }
-  function elapsed(timer, now) {
-    return timer.elapsedMs + (timer.status === 'running' ? Math.max(0, now - timer.startedAt) : 0);
-  }
-  function toggle(timer, now) {
-    if (timer.status === 'running') {
-      return { id: timer.id, status: 'paused', elapsedMs: elapsed(timer, now), startedAt: null };
-    }
-    return { id: timer.id, status: 'running', elapsedMs: timer.elapsedMs, startedAt: now };
-  }
-  function pauseAll(timers, now) {
-    return timers.map(function (timer) { return timer.status === 'running' ? toggle(timer, now) : timer; });
-  }
-  function pad(n) { return n < 10 ? '0' + n : String(n); }
-  function format(ms) {
-    var seconds = Math.floor(Math.max(0, ms) / 1000);
-    return pad(Math.floor(seconds / 3600)) + ':' + pad(Math.floor(seconds / 60) % 60) + ':' + pad(seconds % 60);
-  }
-  function view(timers, now) {
-    return timers.map(function (timer) {
-      var time = format(elapsed(timer, now));
-      var label = { idle: '点击开始', running: '计时中', paused: '已暂停' }[timer.status];
-      var parts = timer.id.split('-');
-      var seconds = String(Math.floor(elapsed(timer, now) / 1000));
-      return { id: timer.id, group: parts[0], number: Number(parts[1]), status: timer.status, time: time,
-        seconds: seconds, label: label, long: seconds.length > 5,
-        aria: parts[0] + '组' + parts[1] + '号，' + label + '，' + seconds + '秒，点击' + (timer.status === 'running' ? '暂停' : timer.status === 'paused' ? '继续' : '开始') };
-    });
-  }
-  function restore(saved) {
-    if (!saved || saved.version !== 1 || !Array.isArray(saved.timers)) return create();
-    return ORDER.map(function (id) {
-      var timer = saved.timers.find(function (item) { return item && item.id === id; });
-      if (!timer && id.indexOf('A-') === 0) timer = saved.timers.find(function (item) { return item && item.id === Number(id.slice(2)); });
-      if (!timer || ['idle', 'running', 'paused'].indexOf(timer.status) < 0 ||
-        !Number.isFinite(timer.elapsedMs) || timer.elapsedMs < 0) return blank(id);
-      if (timer.status === 'idle') return blank(id);
-      if (timer.status === 'running' && (!Number.isFinite(timer.startedAt) || timer.startedAt < 0)) return blank(id);
-      return { id: id, status: timer.status, elapsedMs: timer.elapsedMs,
-        startedAt: timer.status === 'running' ? timer.startedAt : null };
-    });
-  }
-  function snapshot(timers) { return { version: 1, timers: timers }; }
-  return { ORDER: ORDER, create: create, blank: blank, elapsed: elapsed, toggle: toggle,
-    pauseAll: pauseAll, format: format, view: view, restore: restore, snapshot: snapshot };
-}));
+const COUNT_PER_GROUP = 20;
+const state = {
+  A: Array(COUNT_PER_GROUP).fill(null).map(()=>({seconds:0,running:false,timerId:null})),
+  B: Array(COUNT_PER_GROUP).fill(null).map(()=>({seconds:0,running:false,timerId:null}))
+};
 
-</script>
-<script>
-(function () {
-  'use strict';
-  var C = window.TimerCore;
-  var key = 'forty-point-timer-web-v1';
-  var saved;
-  var storageError = false;
-  try { saved = JSON.parse(localStorage.getItem(key) || localStorage.getItem('twenty-point-timer-web-v1') || 'null'); } catch (error) { storageError = true; }
-  var timers = C.restore(saved);
-  var grids = { A: document.getElementById('gridA'), B: document.getElementById('gridB') };
-  var buttons = {};
-  var ticker = null;
-  var confirmAction = null;
-  var previousFocus = null;
-  var modal = document.getElementById('modal');
-  var confirmButton = document.getElementById('confirm');
-  var cancelButton = document.getElementById('cancel');
-  timers.forEach(function (timer) {
-    var button = document.createElement('button');
-    button.type = 'button'; button.dataset.id = timer.id;
-    button.innerHTML = '<span class="tile-top"><span class="number">' + timer.id.split('-')[1] + '</span><span class="status-dot" aria-hidden="true"></span></span><span class="time">0</span><span class="tile-label">点击开始</span>';
-    button.title = '点击开始 / 暂停 / 继续；长按或 Shift + Enter 清零';
-    var hold = null, suppressClick = false, startX = 0, startY = 0;
-    function clearHold() { if (hold) clearTimeout(hold); hold = null; }
-    button.addEventListener('pointerdown', function (event) {
-      if (event.button !== 0) return;
-      suppressClick = false; startX = event.clientX; startY = event.clientY;
-      clearHold();
-      hold = setTimeout(function () { suppressClick = true; resetOne(timer.id); }, 600);
-    });
-    button.addEventListener('pointermove', function (event) {
-      if (Math.abs(event.clientX - startX) + Math.abs(event.clientY - startY) > 12) clearHold();
-    });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (name) { button.addEventListener(name, clearHold); });
-    button.addEventListener('contextmenu', function (event) { event.preventDefault(); clearHold(); if (modal.hidden) resetOne(timer.id); suppressClick = true; });
-    button.addEventListener('click', function () {
-      if (suppressClick) { suppressClick = false; return; }
-      var now = Date.now();
-      timers = timers.map(function (t) { return t.id === timer.id ? C.toggle(t, now) : t; }); commit();
-    });
-    button.addEventListener('keydown', function (event) {
-      if (event.shiftKey && event.key === 'Enter') { event.preventDefault(); resetOne(timer.id); }
-    });
-    buttons[timer.id] = button; grids[timer.id.split('-')[0]].appendChild(button);
-  });
-  function render() {
-    var now = Date.now();
-    C.view(timers, now).forEach(function (tile) {
-      var button = buttons[tile.id];
-      var className = 'tile ' + tile.status;
-      if (button.className !== className) button.className = className;
-      var time = button.querySelector('.time');
-      if (time.textContent !== tile.seconds) time.textContent = tile.seconds;
-      time.className = 'time' + (tile.long ? ' long' : '');
-      button.title = tile.group + '组 ' + tile.number + '号 · ' + tile.time + '（时:分:秒）；长按清零';
-      var label = button.querySelector('.tile-label');
-      var shortLabel = tile.status === 'idle' ? '开始' : tile.status === 'running' ? '计时' : '暂停';
-      if (label.textContent !== shortLabel) label.textContent = shortLabel;
-      button.setAttribute('aria-label', tile.aria);
-      button.setAttribute('aria-pressed', tile.status === 'running' ? 'true' : 'false');
-    });
-    var running = timers.filter(function (t) { return t.status === 'running'; }).length;
-    var paused = timers.filter(function (t) { return t.status === 'paused'; }).length;
-    document.getElementById('running').textContent = running;
-    document.getElementById('paused').textContent = paused;
-    document.getElementById('liveDot').className = 'live-dot' + (running ? ' on' : '');
-    document.getElementById('pauseAll').disabled = !running;
-    document.getElementById('resetAll').disabled = !(running + paused);
-    var note = document.getElementById('storageNote');
-    note.textContent = storageError ? '保存失败：请保持页面打开，避免记录丢失' : '自动保存到本机 · 离开后继续计时';
-    note.className = 'storage-note' + (storageError ? ' error' : '');
-  }
-  function save() {
-    try { localStorage.setItem(key, JSON.stringify(C.snapshot(timers))); storageError = false; }
-    catch (error) { storageError = true; }
-  }
-  function syncTicker() {
-    if (ticker) clearInterval(ticker); ticker = null;
-    if (!document.hidden && timers.some(function (t) { return t.status === 'running'; })) ticker = setInterval(render, 200);
-  }
-  function commit() { save(); render(); syncTicker(); }
-  function showDialog(title, text, action, isHelp) {
-    previousFocus = document.activeElement;
-    document.getElementById('dialogTitle').textContent = title;
-    document.getElementById('dialogText').textContent = text;
-    cancelButton.hidden = !!isHelp;
-    confirmButton.textContent = isHelp ? '知道了' : '确认清零';
-    confirmButton.className = 'confirm' + (isHelp ? ' help' : '');
-    confirmAction = action; modal.hidden = false;
-    if ('inert' in document.querySelector('main')) document.querySelector('main').inert = true;
-    (isHelp ? confirmButton : cancelButton).focus();
-  }
-  function closeDialog() {
-    modal.hidden = true; confirmAction = null;
-    if ('inert' in document.querySelector('main')) document.querySelector('main').inert = false;
-    if (previousFocus && previousFocus.focus) previousFocus.focus();
-  }
-  function resetOne(id) {
-    showDialog('清零 ' + id.replace('-', '组 ') + ' 号？', '清零后回到未开始状态，其他编号不受影响。', function () {
-      timers = timers.map(function (t) { return t.id === id ? C.blank(id) : t; }); commit();
-    });
-  }
-  confirmButton.addEventListener('click', function () { var action = confirmAction; closeDialog(); if (action) action(); });
-  cancelButton.addEventListener('click', closeDialog);
-  modal.addEventListener('click', function (event) { if (event.target === modal) closeDialog(); });
-  document.addEventListener('keydown', function (event) {
-    if (modal.hidden) return;
-    if (event.key === 'Escape') closeDialog();
-    if (event.key === 'Tab') {
-      event.preventDefault();
-      if (cancelButton.hidden || document.activeElement === cancelButton) confirmButton.focus(); else cancelButton.focus();
+function formatTime(totalSec){
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+function renderGroup(groupKey, el){
+  el.innerHTML = '';
+  state[groupKey].forEach((item, idx)=>{
+    const btn = document.createElement('button');
+    btn.className = 'timer-btn';
+    const label = `${groupKey}${idx+1}`;
+    btn.dataset.g = groupKey;
+    btn.dataset.i = idx;
+
+    if(item.running) btn.classList.add('running');
+    else if(item.seconds>0) btn.classList.add('paused');
+
+    if(item.seconds >= 50*60){
+      btn.classList.add('over50');
     }
-  });
-  document.getElementById('pauseAll').addEventListener('click', function () { timers = C.pauseAll(timers, Date.now()); commit(); });
-  document.getElementById('resetAll').addEventListener('click', function () {
-    showDialog('全部清零？', 'A、B 两组共 40 个编号的计时都会清除，此操作无法撤销。', function () { timers = C.create(); commit(); });
-  });
-  document.getElementById('help').addEventListener('click', function () {
-    showDialog('使用说明', '① 点击编号：开始 → 暂停 → 继续。\n② 长按某个编号：单独清零。电脑也可右键或按 Shift + Enter。\n③ 绿色为计时中，黄色为已暂停。\n④ 记录保存在当前设备、当前浏览器；切出或关闭后，运行中的计时会在返回时补算。\n⑤ 顶部旋转按钮可将整个界面旋转 90°，再点恢复；手机横竖屏也会自动适配。\n⑥ 按钮内显示累计秒数，1 分钟显示 60。A、B 两组独立编号。', null, true);
-  });
-  document.addEventListener('visibilitychange', function () { if (document.hidden) save(); render(); syncTicker(); });
-  window.addEventListener('pagehide', save);
-  window.addEventListener('pageshow', function () { render(); syncTicker(); });
-  window.addEventListener('storage', function (event) {
-    if (event.key !== key && event.key !== null) return;
-    try { timers = C.restore(event.newValue ? JSON.parse(event.newValue) : null); render(); syncTicker(); } catch (error) { /* Ignore invalid external writes. */ }
-  });
-  document.getElementById('shareHelp').addEventListener('click', function () {
-    showDialog('如何发到微信', '这是一个完整的 HTML 小文件，不需要附带其他文件。\n\n电脑微信：把“40点计时-微信分享版.html”拖进聊天窗口，作为文件发送。\n\n接收方下载后用浏览器打开。手机微信的文件预览可能不运行 HTML；若无法打开，请在电脑浏览器使用。\n\n要保证手机微信里点开即用，需要发布成网页链接或小程序。本文件不包含你当前的计时记录。', null, true);
-  });
-  var surface = document.getElementById('surface');
-  var rotateButton = document.getElementById('rotate');
-  var rotated = false;
-  var lastLandscape = window.innerWidth > window.innerHeight;
-  function applyLayout() {
-    var actualWidth = window.innerWidth, actualHeight = window.innerHeight;
-    var landscape = actualWidth > actualHeight;
-    if (landscape !== lastLandscape) rotated = false;
-    lastLandscape = landscape;
-    var width = rotated ? actualHeight : actualWidth;
-    var height = rotated ? actualWidth : actualHeight;
-    surface.className = 'surface' + (rotated ? ' rotated' : '') + (width < 600 ? ' narrow' : ' wide') + (width > height && height < 540 ? ' compact' : '');
-    surface.style.width = width + 'px';
-    surface.style.height = height + 'px';
-    surface.style.setProperty('--screen-height', height + 'px');
-    rotateButton.textContent = rotated ? '↶ 恢复方向' : '↻ 旋转屏幕';
-    rotateButton.setAttribute('aria-pressed', rotated ? 'true' : 'false');
+
+    btn.textContent = label + '\n' + formatTime(item.seconds);
+    btn.onclick = ()=>toggleTimer(groupKey, idx);
+    el.appendChild(btn);
+  })
+}
+
+function toggleTimer(g, i){
+  const item = state[g][i];
+  if(item.running){
+    clearInterval(item.timerId);
+    item.running = false;
+  }else{
+    item.running = true;
+    item.timerId = setInterval(()=>{
+      item.seconds += 1;
+      renderAll();
+    },1000)
   }
-  rotateButton.addEventListener('click', function () { rotated = !rotated; applyLayout(); });
-  window.addEventListener('resize', applyLayout);
-  applyLayout(); render(); syncTicker();
-}());
+  renderAll();
+}
+
+function renderAll(){
+  renderGroup('A', document.getElementById('groupA'));
+  renderGroup('B', document.getElementById('groupB'));
+}
+
+// help modal
+document.getElementById('helpBtn').onclick = ()=>{
+  document.getElementById('helpModal').classList.add('show');
+}
+document.getElementById('closeModal').onclick = ()=>{
+  document.getElementById('helpModal').classList.remove('show');
+}
+
+renderAll();
 </script>
 </body>
 </html>
