@@ -23,6 +23,9 @@ h1 { margin:0; font-size:28px; font-weight:720; letter-spacing:-1px; }
 .top-actions { display:flex; align-items:center; gap:9px; }
 .grid-label { font-size:11px; color:var(--muted); white-space:nowrap; }
 .rotate-button { border:1px solid #cedbca; background:#e6eee2; color:#345c43; border-radius:8px; padding:8px 10px; font-size:12px; white-space:nowrap; }
+.voice-button { border:1px solid #cedbca; background:#e6eee2; color:#345c43; border-radius:8px; padding:8px 10px; font-size:12px; white-space:nowrap; }
+.voice-button.off { background:#e6e6e6; color:#888; border-color:#d8d8d8; }
+.voice-button.on { background:#1b7456; color:#fff; border-color:#1b7456; }
 .subtitle { margin:8px 0 16px; font-size:12px; color:var(--muted); }
 .summary { border-radius:10px; padding:10px 13px; background:#e8eee5; display:flex; justify-content:space-between; align-items:center; font-size:12px; }
 .summary-left { display:flex; align-items:center; gap:8px; }
@@ -114,7 +117,7 @@ h1 { margin:0; font-size:28px; font-weight:720; letter-spacing:-1px; }
 <main class="app">
   <header>
     <p class="eyebrow"><span class="brand-dot" aria-hidden="true"></span>每一点，都有自己的时间</p>
-    <div class="title-line"><h1>双组计时</h1><div class="top-actions"><span class="grid-label">40 点 · A / B</span><button id="rotate" class="rotate-button" aria-pressed="false">↻ 旋转屏幕</button></div></div>
+    <div class="title-line"><h1>双组计时</h1><div class="top-actions"><span class="grid-label">40 点 · A / B</span><button id="voiceToggle" class="voice-button on" aria-pressed="true">语音：开</button><button id="rotate" class="rotate-button" aria-pressed="false">↻ 旋转屏幕</button></div></div>
     <p class="subtitle">点一下开始，再点暂停，再点继续。</p>
   </header>
   <section class="summary" aria-label="计时状态">
@@ -210,6 +213,16 @@ h1 { margin:0; font-size:28px; font-weight:720; letter-spacing:-1px; }
   var storageError = false;
   try { saved = JSON.parse(localStorage.getItem(key) || localStorage.getItem('twenty-point-timer-web-v1') || 'null'); } catch (error) { storageError = true; }
   var timers = C.restore(saved);
+  var voiceKey = 'forty-point-timer-voice-v1';
+  var voiceEnabled = localStorage.getItem(voiceKey) !== 'off';
+  var announcedIds = {};
+  // 页面加载时已超过 50 分钟的计时器，标记为已播报，不做补播
+  (function () {
+    var initNow = Date.now();
+    timers.forEach(function (t) {
+      if (C.elapsed(t, initNow) >= 50 * 60 * 1000) announcedIds[t.id] = true;
+    });
+  }());
   var grids = { A: document.getElementById('gridA'), B: document.getElementById('gridB') };
   var buttons = {};
   var ticker = null;
@@ -246,8 +259,31 @@ h1 { margin:0; font-size:28px; font-weight:720; letter-spacing:-1px; }
     });
     buttons[timer.id] = button; grids[timer.id.split('-')[0]].appendChild(button);
   });
+  var audioCache = {};
+  function stopAllAlerts() {
+    Object.keys(audioCache).forEach(function (k) {
+      try { audioCache[k].pause(); audioCache[k].currentTime = 0; } catch (e) { /* ignore */ }
+    });
+  }
+  // 50 分钟到点的老佛爷阴阳怪气语音播报
+  function speakAlert(id) {
+    var fileId = id.replace('-', '');
+    var audio = audioCache[fileId];
+    if (!audio) {
+      audio = new Audio('audio/' + fileId + '.wav');
+      audioCache[fileId] = audio;
+    }
+    try { audio.pause(); audio.currentTime = 0; audio.play(); } catch (e) { /* ignore */ }
+  }
   function render() {
     var now = Date.now();
+    // 检测是否有计时在本次刷新中跨过 50 分钟
+    timers.forEach(function (t) {
+      if (C.elapsed(t, now) >= 50 * 60 * 1000 && !announcedIds[t.id]) {
+        announcedIds[t.id] = true;
+        if (voiceEnabled) speakAlert(t.id);
+      }
+    });
     C.view(timers, now).forEach(function (tile) {
       var button = buttons[tile.id];
       var className = 'tile ' + tile.status + (tile.overtime ? ' overtime' : '');
@@ -301,7 +337,9 @@ h1 { margin:0; font-size:28px; font-weight:720; letter-spacing:-1px; }
   }
   function resetOne(id) {
     showDialog('清零 ' + id.replace('-', '组 ') + ' 号？', '清零后回到未开始状态，其他编号不受影响。', function () {
-      timers = timers.map(function (t) { return t.id === id ? C.blank(id) : t; }); commit();
+      timers = timers.map(function (t) { return t.id === id ? C.blank(id) : t; });
+      delete announcedIds[id];
+      commit();
     });
   }
   confirmButton.addEventListener('click', function () { var action = confirmAction; closeDialog(); if (action) action(); });
@@ -316,11 +354,26 @@ h1 { margin:0; font-size:28px; font-weight:720; letter-spacing:-1px; }
     }
   });
   document.getElementById('pauseAll').addEventListener('click', function () { timers = C.pauseAll(timers, Date.now()); commit(); });
+  var voiceButton = document.getElementById('voiceToggle');
+  function updateVoiceButton() {
+    voiceButton.textContent = voiceEnabled ? '语音：开' : '语音：关';
+    voiceButton.className = 'voice-button ' + (voiceEnabled ? 'on' : 'off');
+    voiceButton.setAttribute('aria-pressed', voiceEnabled ? 'true' : 'false');
+  }
+  voiceButton.addEventListener('click', function () {
+    voiceEnabled = !voiceEnabled;
+    localStorage.setItem(voiceKey, voiceEnabled ? 'on' : 'off');
+    if (!voiceEnabled) stopAllAlerts();
+    updateVoiceButton();
+  });
+  updateVoiceButton();
   document.getElementById('resetAll').addEventListener('click', function () {
-    showDialog('全部清零？', 'A、B 两组共 40 个编号的计时都会清除，此操作无法撤销。', function () { timers = C.create(); commit(); });
+    showDialog('全部清零？', 'A、B 两组共 40 个编号的计时都会清除，此操作无法撤销。', function () {
+      timers = C.create(); announcedIds = {}; commit();
+    });
   });
   document.getElementById('help').addEventListener('click', function () {
-    showDialog('使用说明', '① 点击编号：开始 → 暂停 → 继续。\n② 长按某个编号：单独清零。电脑也可右键或按 Shift + Enter。\n③ 绿色为计时中，黄色为已暂停，超过50分钟按钮变红。\n④ 记录保存在当前设备、当前浏览器；切出或关闭后，运行中的计时会在返回时补算。\n⑤ 顶部旋转按钮可将整个界面旋转 90°，再点恢复；手机横竖屏也会自动适配。\n⑥ 按钮内显示累计时间，格式为分:秒（如 05:12 表示5分12秒）。A、B 两组独立编号。', null, true);
+    showDialog('使用说明', '① 点击编号：开始 → 暂停 → 继续。\n② 长按某个编号：单独清零。电脑也可右键或按 Shift + Enter。\n③ 绿色为计时中，黄色为已暂停，超过50分钟按钮变红。\n④ 记录保存在当前设备、当前浏览器；切出或关闭后，运行中的计时会在返回时补算。\n⑤ 顶部旋转按钮可将整个界面旋转 90°，再点恢复；手机横竖屏也会自动适配。\n⑥ 按钮内显示累计时间，格式为分:秒（如 05:12 表示5分12秒）。A、B 两组独立编号。\n⑦ 顶部“语音：开/关”按钮可控制语音；打开后，某个计时一到50分钟，会用京味儿语音播报“哎呦喂，编号，再不看要炸了”。每个编号只播报一次，清零后重新计时才会再次播报。', null, true);
   });
   document.addEventListener('visibilitychange', function () { if (document.hidden) save(); render(); syncTicker(); });
   window.addEventListener('pagehide', save);
